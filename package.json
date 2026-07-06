@@ -1,0 +1,37 @@
+{
+  "name": "pitchpal",
+  "version": "1.0.0",
+  "description": "PitchPal - GenAI Smart Stadium & Tournament Operations Assistant for FIFA World Cup 2026",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest --run --coverage"
+  },
+  "keywords": [
+    "genai",
+    "rag",
+    "fifa-world-cup-2026",
+    "smart-stadium",
+    "accessibility"
+  ],
+  "author": "PitchPal Team",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.0",
+    "supertest": "^7.0.0",
+    "vitest": "^4.0.0"
+  }
+}
