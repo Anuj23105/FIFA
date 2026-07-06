@@ -12,6 +12,11 @@ export const config = {
   env: process.env.NODE_ENV || 'development',
   port: int(process.env.PORT, 3000),
 
+  // Number of proxy hops to trust (Render/most PaaS sit behind one proxy).
+  // Falls back to 1 in production so rate limiting works correctly behind
+  // Render's load balancer even without an explicit env var.
+  trustProxy: int(process.env.TRUST_PROXY, (process.env.NODE_ENV === 'production') ? 1 : 0),
+
   cors: {
     // Split comma-separated origins; '*' allows any (intended for local dev only).
     origin:

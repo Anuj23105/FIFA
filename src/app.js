@@ -19,6 +19,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export function createApp() {
   const app = express();
 
+  // Trust one proxy hop unconditionally — correct for Render, Railway,
+  // Fly.io, Cloud Run, and any other reverse-proxied platform.
+  // For local development this is harmless.
+  app.set('trust proxy', 1);
+
   // Security headers. A CSP that permits the self-hosted, dependency-free UI.
   app.use(
     helmet({

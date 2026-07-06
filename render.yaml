@@ -1,0 +1,27 @@
+# Render Blueprint - one-click deploy of PitchPal.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: pitchpal
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      # CORS is not required (the UI is same-origin), kept explicit for clarity.
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: LLM_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai
+      - key: LLM_MODEL
+        value: gemini-2.5-flash
+      # Secret: set this in the Render dashboard, NOT in this file.
+      - key: LLM_API_KEY
+        sync: false
