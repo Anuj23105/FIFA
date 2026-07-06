@@ -24,11 +24,21 @@
     <main id="main" class="layout">
       <!-- Assistant -->
       <section class="card chat-card" aria-labelledby="chat-heading">
-        <h2 id="chat-heading">Fan &amp; Staff Assistant</h2>
+        <h2 id="chat-heading">Fan, Staff &amp; Volunteer Assistant</h2>
         <p class="hint">
           Ask about navigation, transport, accessibility, crowd levels, sustainability,
           safety, or tickets. English, Español, Français, Português, and Deutsch are supported.
         </p>
+
+        <div class="role-row">
+          <label for="role-select">I am a</label>
+          <select id="role-select" aria-label="Select your role">
+            <option value="fan">Fan</option>
+            <option value="staff">Venue staff</option>
+            <option value="volunteer">Volunteer</option>
+            <option value="organizer">Organizer</option>
+          </select>
+        </div>
 
         <div
           id="transcript"
@@ -79,6 +89,25 @@
         <div class="recommendations" aria-labelledby="rec-heading">
           <h3 id="rec-heading">AI recommendations</h3>
           <ul id="rec-list"></ul>
+        </div>
+
+        <div class="decision-support" aria-labelledby="ds-heading">
+          <h3 id="ds-heading">Real-time decision support</h3>
+          <p class="hint">
+            Describe a live situation. GenAI returns prioritised actions for staff, volunteers, and
+            organizers.
+          </p>
+          <form id="ds-form" class="ds-form" autocomplete="off">
+            <label for="ds-input" class="visually-hidden">Describe the situation</label>
+            <input
+              id="ds-input"
+              type="text"
+              maxlength="500"
+              placeholder="e.g. Gate C overcrowded and a medical incident near Section 112"
+            />
+            <button type="submit" id="ds-btn">Advise</button>
+          </form>
+          <ol id="ds-actions" class="ds-actions" aria-live="polite"></ol>
         </div>
       </section>
     </main>

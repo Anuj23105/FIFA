@@ -6,11 +6,23 @@ const api = {
     const r = await fetch('/api/health');
     return r.json();
   },
-  async chat(message) {
+  async chat(message, role) {
     const r = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, role }),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.error || 'Request failed');
+    }
+    return r.json();
+  },
+  async decisionSupport(situation) {
+    const r = await fetch('/api/decision-support', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ situation }),
     });
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
@@ -57,10 +69,12 @@ async function ask(message) {
   sendBtn.disabled = true;
   const pending = addMessage('…', 'bot');
   try {
-    const res = await api.chat(message);
+    const role = document.getElementById('role-select')?.value || 'fan';
+    const res = await api.chat(message, role);
     const meta = [
       res.intent && res.intent !== 'general' ? `intent: ${res.intent}` : null,
       res.language ? `lang: ${res.language}` : null,
+      res.role ? `as ${res.role}` : null,
       res.venue ? res.venue.name : null,
       `via ${res.generator}`,
     ]
@@ -158,6 +172,47 @@ mtk.addEventListener('input', () => {
   refreshCrowd();
 });
 venueSelect.addEventListener('change', refreshCrowd);
+
+/* ---------- Real-time decision support ---------- */
+
+const dsForm = document.getElementById('ds-form');
+const dsInput = document.getElementById('ds-input');
+const dsBtn = document.getElementById('ds-btn');
+const dsActions = document.getElementById('ds-actions');
+
+async function requestDecisionSupport(situation) {
+  if (!situation.trim()) return;
+  dsBtn.disabled = true;
+  dsActions.innerHTML = '';
+  const pending = document.createElement('li');
+  pending.textContent = 'Analysing…';
+  dsActions.appendChild(pending);
+  try {
+    const res = await api.decisionSupport(situation);
+    dsActions.innerHTML = '';
+    for (const action of res.actions) {
+      const li = document.createElement('li');
+      li.textContent = action;
+      dsActions.appendChild(li);
+    }
+    const meta = document.createElement('li');
+    meta.className = 'ds-meta';
+    meta.textContent = `intent: ${res.intent} · via ${res.generator}`;
+    dsActions.appendChild(meta);
+  } catch (err) {
+    dsActions.innerHTML = '';
+    const li = document.createElement('li');
+    li.textContent = `Unable to advise: ${err.message}`;
+    dsActions.appendChild(li);
+  } finally {
+    dsBtn.disabled = false;
+  }
+}
+
+dsForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  requestDecisionSupport(dsInput.value);
+});
 
 /* ---------- Init ---------- */
 

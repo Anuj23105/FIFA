@@ -4,7 +4,15 @@
  * type, length, and character content before anything reaches the services.
  */
 
-const MAX_MESSAGE_LENGTH = 500;
+import {
+  MAX_MESSAGE_LENGTH,
+  MAX_VENUE_ID_LENGTH,
+  MAX_MINUTES_TO_KICKOFF,
+  ROLES,
+} from '../constants.js';
+
+// Hoisted at module scope so it is compiled once, not on every request.
+const VENUE_ID_RE = new RegExp(`^[a-z0-9-]{1,${MAX_VENUE_ID_LENGTH}}$`);
 
 /**
  * Sanitise a free-text string: coerce to string, trim, strip control
@@ -23,19 +31,52 @@ export function sanitizeText(value, maxLength = MAX_MESSAGE_LENGTH) {
 }
 
 /**
- * Express middleware validating the chat request body.
+ * Validate a free-text field on the request body: must be a non-empty string
+ * within the length cap. Returns the sanitised value, or sends a 400 and
+ * returns `null` when invalid.
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {string} field
+ * @returns {string|null}
  */
-export function validateChat(req, res, next) {
-  const raw = req.body?.message;
+function validateTextField(req, res, field) {
+  const raw = req.body?.[field];
   if (typeof raw !== 'string' || raw.trim().length === 0) {
-    return res.status(400).json({ error: 'A non-empty "message" string is required.' });
+    res.status(400).json({ error: `A non-empty "${field}" string is required.` });
+    return null;
   }
   if (raw.length > MAX_MESSAGE_LENGTH) {
-    return res
+    res
       .status(400)
-      .json({ error: `"message" must be ${MAX_MESSAGE_LENGTH} characters or fewer.` });
+      .json({ error: `"${field}" must be ${MAX_MESSAGE_LENGTH} characters or fewer.` });
+    return null;
   }
-  req.body.message = sanitizeText(raw);
+  return sanitizeText(raw);
+}
+
+/**
+ * Express middleware validating the chat request body.
+ * Accepts an optional `role` that must be one of the supported audiences.
+ */
+export function validateChat(req, res, next) {
+  const message = validateTextField(req, res, 'message');
+  if (message === null) return;
+
+  if (req.body.role !== undefined && !ROLES.includes(req.body.role)) {
+    return res.status(400).json({ error: `"role" must be one of: ${ROLES.join(', ')}.` });
+  }
+
+  req.body.message = message;
+  next();
+}
+
+/**
+ * Express middleware validating the decision-support request body.
+ */
+export function validateDecisionSupport(req, res, next) {
+  const situation = validateTextField(req, res, 'situation');
+  if (situation === null) return;
+  req.body.situation = situation;
   next();
 }
 

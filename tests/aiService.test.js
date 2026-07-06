@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
-import { answer, buildContext, composeGroundedAnswer } from '../src/services/aiService.js';
+import {
+  answer,
+  buildContext,
+  composeGroundedAnswer,
+  composeDecisionActions,
+  decisionSupport,
+} from '../src/services/aiService.js';
 
 describe('buildContext', () => {
   it('includes venue and knowledge grounding when both match', () => {
@@ -48,6 +54,86 @@ describe('answer (grounded path, no LLM configured)', () => {
   it('detects language for a Spanish query', async () => {
     const res = await answer('¿dónde puedo reciclar en el estadio?');
     expect(res.language).toBe('es');
+  });
+
+  it('frames the answer for the given role', async () => {
+    const res = await answer('crowd levels at SoFi Stadium', { role: 'organizer' });
+    expect(res.role).toBe('organizer');
+  });
+
+  it('defaults role to fan', async () => {
+    const res = await answer('gate at SoFi Stadium');
+    expect(res.role).toBe('fan');
+  });
+});
+
+// ── composeDecisionActions ────────────────────────────────────────────────────
+
+describe('composeDecisionActions', () => {
+  it('returns crowd-management actions for a crowd situation', () => {
+    const ctx = buildContext('gate overcrowded queues building');
+    const actions = composeDecisionActions('crowd', ctx);
+    expect(actions.join(' ')).toMatch(/redistribute|screening/i);
+  });
+
+  it('returns safety actions for a safety situation', () => {
+    const ctx = buildContext('medical emergency first aid');
+    const actions = composeDecisionActions('safety', ctx);
+    expect(actions.join(' ')).toMatch(/first-aid|control room/i);
+  });
+
+  it('always returns at least one action for unknown intent', () => {
+    const ctx = buildContext('something unusual is happening');
+    const actions = composeDecisionActions('general', ctx);
+    expect(actions.length).toBeGreaterThan(0);
+  });
+});
+
+// ── decisionSupport ───────────────────────────────────────────────────────────
+
+describe('decisionSupport (grounded path)', () => {
+  it('rejects an empty situation', async () => {
+    await expect(decisionSupport('')).rejects.toMatchObject({ code: 'EMPTY_MESSAGE' });
+  });
+
+  it('classifies a crowd situation and returns grounded actions', async () => {
+    const res = await decisionSupport('Overcrowding and long queues building at MetLife Stadium');
+    expect(res.intent).toBe('crowd');
+    expect(res.generator).toBe('grounded');
+    expect(res.actions.length).toBeGreaterThan(0);
+    expect(res.sources.length).toBeGreaterThan(0);
+  });
+});
+
+describe('decisionSupport (LLM path via injected fetch)', () => {
+  it('parses the model response into an action list', async () => {
+    const config = (await import('../src/config.js')).default;
+    const original = config.llm.apiKey;
+    config.llm.apiKey = 'test-key';
+
+    const fakeFetch = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: '1. Open extra lanes at Gate C.\n2. Redirect fans to Gate A.',
+            },
+          },
+        ],
+      }),
+    }));
+
+    try {
+      const res = await decisionSupport('Gate C overcrowded', { fetchImpl: fakeFetch });
+      expect(res.generator).toBe('llm');
+      expect(res.actions.length).toBe(2);
+      expect(res.actions[0]).toMatch(/Open extra lanes/);
+      // Numbering prefix should be stripped.
+      expect(res.actions[0]).not.toMatch(/^\d\./);
+    } finally {
+      config.llm.apiKey = original;
+    }
   });
 });
 
